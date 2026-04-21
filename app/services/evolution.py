@@ -62,6 +62,7 @@ def normalize_evolution_payload(payload: dict[str, Any]) -> WebhookNormalization
         direction=MessageDirection.OUTBOUND if bool(key.get("fromMe")) else MessageDirection.INBOUND,
         raw_payload=payload,
         display_name=_extract_display_name(payload, candidate),
+        product_external_id=_extract_product_external_id(payload, candidate),
     )
     return WebhookNormalizationResult(
         event_name=event_name or "direct_message_input",
@@ -164,5 +165,43 @@ def _extract_message_text(message_payload: dict[str, Any]) -> str | None:
     for candidate in text_candidates:
         if isinstance(candidate, str) and candidate.strip():
             return candidate.strip()
+
+    return None
+
+
+def _extract_product_external_id(payload: dict[str, Any], candidate: dict[str, Any]) -> str | None:
+    direct_keys = (
+        "productId",
+        "product_id",
+        "externalProductId",
+        "external_product_id",
+        "catalogProductId",
+        "catalog_product_id",
+    )
+    for source in (candidate, payload, candidate.get("message") or {}):
+        for key in direct_keys:
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+    return _find_first_string_by_key(
+        payload,
+        target_keys={key.lower() for key in direct_keys},
+    )
+
+
+def _find_first_string_by_key(value: Any, *, target_keys: set[str]) -> str | None:
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            if key.lower() in target_keys and isinstance(nested_value, str) and nested_value.strip():
+                return nested_value.strip()
+            nested_match = _find_first_string_by_key(nested_value, target_keys=target_keys)
+            if nested_match:
+                return nested_match
+    elif isinstance(value, list):
+        for item in value:
+            nested_match = _find_first_string_by_key(item, target_keys=target_keys)
+            if nested_match:
+                return nested_match
 
     return None
