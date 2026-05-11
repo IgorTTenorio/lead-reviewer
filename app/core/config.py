@@ -30,6 +30,20 @@ class Settings(BaseModel):
     alembic_database_url: str | None = Field(
         default_factory=lambda: os.getenv("ALEMBIC_DATABASE_URL")
     )
+    celery_broker_url: str = Field(
+        default_factory=lambda: os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+    )
+    celery_result_backend: str = Field(
+        default_factory=lambda: os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
+    )
+    celery_task_always_eager: bool = Field(
+        default_factory=lambda: os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    celery_task_eager_propagates: bool = Field(
+        default_factory=lambda: os.getenv("CELERY_TASK_EAGER_PROPAGATES", "true").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
 
     @property
     def sqlalchemy_database_url(self) -> str:
